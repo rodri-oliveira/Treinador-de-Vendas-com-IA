@@ -12,7 +12,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Código e dados
 COPY src/ ./src
-COPY data/ ./data
+# Em dev, os dados virão via volume (docker-compose). Garantimos que o diretório exista.
+RUN mkdir -p /app/data
 
 EXPOSE 8000
 
