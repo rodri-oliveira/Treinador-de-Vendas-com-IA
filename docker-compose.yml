@@ -1,0 +1,36 @@
+version: "3.9"
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: tvia_api
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data
+    networks:
+      - app_net
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: tvia_web
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - api
+    networks:
+      - app_net
+
+networks:
+  app_net:
+    driver: bridge

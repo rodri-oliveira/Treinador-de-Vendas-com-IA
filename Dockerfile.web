@@ -1,0 +1,13 @@
+# Dev Dockerfile for Next.js
+FROM node:20-alpine
+WORKDIR /app
+
+# Instalar deps primeiro para cache
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm install || yarn install
+
+# Copiar o restante do app
+COPY frontend/ .
+
+EXPOSE 3000
+CMD ["npm", "run", "dev"]

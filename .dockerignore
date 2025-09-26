@@ -1,0 +1,30 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.dylib
+*.egg-info/
+.venv/
+venv/
+
+# Node/Next
+node_modules/
+frontend/.next/
+frontend/node_modules/
+
+# Data & Artifacts
+/data/
+artifacts/
+models/
+embeddings/
+logs/
+
+# Env
+.env
+.env.*
