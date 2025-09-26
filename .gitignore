@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.dylib
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+
+# IDEs/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Data & Artifacts
+/data/
+!data/.gitkeep
+artifacts/
+models/
+embeddings/
+
+# Logs
+logs/
+*.log
+
+# Streamlit
+.streamlit/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Local configs
+local_settings.yaml
