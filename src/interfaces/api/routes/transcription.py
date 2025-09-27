@@ -16,7 +16,7 @@ PROSODY_EXTRACTOR_SINGLETON = LibrosaProsodyExtractor(target_sr=16000)
 
 
 @router.post("/upload", response_model=TranscriptResponse)
-async def upload_audio(file: UploadFile = File(...), include_prosody: bool = False, resp: Response | None = None):
+async def upload_audio(file: UploadFile = File(...), include_prosody: bool = False, response: Response = None):
     # Validação de extensão
     allowed_ext = {"wav", "mp3", "m4a", "ogg"}
     filename = file.filename or ""
@@ -68,9 +68,9 @@ async def upload_audio(file: UploadFile = File(...), include_prosody: bool = Fal
             response_data["prosody"] = prosody.model_dump()
             response_data["prosody_ms"] = int((p1 - p0) * 1000)
 
-        if resp is not None:
+        if response is not None:
             total_ms = int((time.perf_counter() - req_start) * 1000)
-            resp.headers["X-Process-Time-ms"] = str(total_ms)
+            response.headers["X-Process-Time-ms"] = str(total_ms)
 
         return response_data
 
