@@ -36,3 +36,4 @@ logs/
 
 # Local configs
 local_settings.yaml
+scripts/
