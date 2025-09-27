@@ -2,6 +2,7 @@ import os
 import tempfile
 from fastapi import APIRouter, UploadFile, File, HTTPException, status
 
+from src.application.use_cases.transcrever_audio import TranscreverAudio
 from src.infrastructure.audio.whisper_transcriber import WhisperTranscriber
 
 router = APIRouter()
@@ -30,7 +31,8 @@ async def upload_audio(file: UploadFile = File(...)):
             tmp.write(content)
 
         transcriber = WhisperTranscriber()
-        dto = transcriber.transcribe(tmp_file)
+        use_case = TranscreverAudio(transcriber)
+        dto = use_case.execute(tmp_file)
         return dto.model_dump()
 
     except HTTPException:
