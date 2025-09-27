@@ -1,15 +1,17 @@
 import os
 import tempfile
+import time
 from fastapi import APIRouter, UploadFile, File, HTTPException, status
 
 from src.application.use_cases.transcrever_audio import TranscreverAudio
 from src.infrastructure.audio.whisper_transcriber import WhisperTranscriber
+from src.infrastructure.audio.librosa_prosody_extractor import LibrosaProsodyExtractor
 
 router = APIRouter()
 
 
 @router.post("/upload")
-async def upload_audio(file: UploadFile = File(...)):
+async def upload_audio(file: UploadFile = File(...), include_prosody: bool = False):
     # Validação de extensão
     allowed_ext = {"wav", "mp3", "m4a", "ogg"}
     filename = file.filename or ""
@@ -46,8 +48,22 @@ async def upload_audio(file: UploadFile = File(...)):
 
         transcriber = WhisperTranscriber()
         use_case = TranscreverAudio(transcriber)
+
+        t0 = time.perf_counter()
         dto = use_case.execute(tmp_file)
-        return dto.model_dump()
+        t1 = time.perf_counter()
+
+        response = dto.model_dump()
+        response["transcription_ms"] = int((t1 - t0) * 1000)
+
+        if include_prosody:
+            p0 = time.perf_counter()
+            prosody = LibrosaProsodyExtractor(target_sr=16000).extract(tmp_file)
+            p1 = time.perf_counter()
+            response["prosody"] = prosody.model_dump()
+            response["prosody_ms"] = int((p1 - p0) * 1000)
+
+        return response
 
     except HTTPException:
         # Propagar HTTPException como está
