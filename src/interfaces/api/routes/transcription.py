@@ -25,9 +25,23 @@ async def upload_audio(file: UploadFile = File(...)):
     tmp_file = None
     try:
         suffix = f".{ext}" if ext else ""
+        # Garantir diretório temporário se definido via env
+        if tmp_dir:
+            os.makedirs(tmp_dir, exist_ok=True)
+
+        # Ler conteúdo (limite de tamanho opcional via env)
+        content = await file.read()
+
+        max_mb = int(os.getenv("MAX_UPLOAD_MB", "50"))
+        max_bytes = max_mb * 1024 * 1024
+        if len(content) > max_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"Arquivo excede o limite de {max_mb}MB"
+            )
+
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix, dir=tmp_dir) as tmp:
             tmp_file = tmp.name
-            content = await file.read()
             tmp.write(content)
 
         transcriber = WhisperTranscriber()
