@@ -1,5 +1,5 @@
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class TranscriptSegment(BaseModel):
@@ -13,4 +13,4 @@ class TranscriptDTO(BaseModel):
     language: Optional[str] = None
     model: Optional[str] = None
     text: str
-    segments: List[TranscriptSegment] = []
+    segments: List[TranscriptSegment] = Field(default_factory=list)
