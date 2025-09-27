@@ -1,7 +1,7 @@
 import os
 import tempfile
 import time
-from fastapi import APIRouter, UploadFile, File, HTTPException, status
+from fastapi import APIRouter, UploadFile, File, HTTPException, status, Response
 
 from src.application.use_cases.transcrever_audio import TranscreverAudio
 from src.infrastructure.audio.whisper_transcriber import WhisperTranscriber
@@ -10,9 +10,13 @@ from src.interfaces.api.schemas import TranscriptResponse
 
 router = APIRouter()
 
+# Instâncias de longa duração (evita re-carregar modelos a cada request)
+TRANSCRIBER_SINGLETON = WhisperTranscriber()
+PROSODY_EXTRACTOR_SINGLETON = LibrosaProsodyExtractor(target_sr=16000)
+
 
 @router.post("/upload", response_model=TranscriptResponse)
-async def upload_audio(file: UploadFile = File(...), include_prosody: bool = False):
+async def upload_audio(file: UploadFile = File(...), include_prosody: bool = False, resp: Response | None = None):
     # Validação de extensão
     allowed_ext = {"wav", "mp3", "m4a", "ogg"}
     filename = file.filename or ""
@@ -47,24 +51,28 @@ async def upload_audio(file: UploadFile = File(...), include_prosody: bool = Fal
             tmp_file = tmp.name
             tmp.write(content)
 
-        transcriber = WhisperTranscriber()
-        use_case = TranscreverAudio(transcriber)
+        use_case = TranscreverAudio(TRANSCRIBER_SINGLETON)
 
-        t0 = time.perf_counter()
+        req_start = time.perf_counter()
+        t0 = req_start
         dto = use_case.execute(tmp_file)
         t1 = time.perf_counter()
 
-        response = dto.model_dump()
-        response["transcription_ms"] = int((t1 - t0) * 1000)
+        response_data = dto.model_dump()
+        response_data["transcription_ms"] = int((t1 - t0) * 1000)
 
         if include_prosody:
             p0 = time.perf_counter()
-            prosody = LibrosaProsodyExtractor(target_sr=16000).extract(tmp_file)
+            prosody = PROSODY_EXTRACTOR_SINGLETON.extract(tmp_file)
             p1 = time.perf_counter()
-            response["prosody"] = prosody.model_dump()
-            response["prosody_ms"] = int((p1 - p0) * 1000)
+            response_data["prosody"] = prosody.model_dump()
+            response_data["prosody_ms"] = int((p1 - p0) * 1000)
 
-        return response
+        if resp is not None:
+            total_ms = int((time.perf_counter() - req_start) * 1000)
+            resp.headers["X-Process-Time-ms"] = str(total_ms)
+
+        return response_data
 
     except HTTPException:
         # Propagar HTTPException como está
