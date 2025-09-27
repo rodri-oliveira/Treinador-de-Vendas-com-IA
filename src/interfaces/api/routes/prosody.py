@@ -1,15 +1,20 @@
 import os
 import tempfile
-from fastapi import APIRouter, UploadFile, File, HTTPException, status
+import time
+from fastapi import APIRouter, UploadFile, File, HTTPException, status, Response
 
 from src.infrastructure.audio.librosa_prosody_extractor import LibrosaProsodyExtractor
 from src.domain.entities.prosody import ProsodyFeaturesDTO
+from src.interfaces.api.schemas import ProsodyResponse
 
 router = APIRouter()
 
+# Instância de longa duração
+PROSODY_EXTRACTOR_SINGLETON = LibrosaProsodyExtractor(target_sr=16000)
 
-@router.post("/extract")
-async def extract_prosody(file: UploadFile = File(...)):
+
+@router.post("/extract", response_model=ProsodyResponse)
+async def extract_prosody(file: UploadFile = File(...), response: Response = None):
     # Validação de extensão básica
     allowed_ext = {"wav", "mp3", "m4a", "ogg"}
     filename = file.filename or ""
@@ -42,8 +47,10 @@ async def extract_prosody(file: UploadFile = File(...)):
             tmp_file = tmp.name
             tmp.write(content)
 
-        extractor = LibrosaProsodyExtractor(target_sr=16000)
-        dto: ProsodyFeaturesDTO = extractor.extract(tmp_file)
+        start = time.perf_counter()
+        dto: ProsodyFeaturesDTO = PROSODY_EXTRACTOR_SINGLETON.extract(tmp_file)
+        if response is not None:
+            response.headers["X-Process-Time-ms"] = str(int((time.perf_counter() - start) * 1000))
         return dto.model_dump()
 
     except HTTPException:
