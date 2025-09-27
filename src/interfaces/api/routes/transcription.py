@@ -6,11 +6,12 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, status
 from src.application.use_cases.transcrever_audio import TranscreverAudio
 from src.infrastructure.audio.whisper_transcriber import WhisperTranscriber
 from src.infrastructure.audio.librosa_prosody_extractor import LibrosaProsodyExtractor
+from src.interfaces.api.schemas import TranscriptResponse
 
 router = APIRouter()
 
 
-@router.post("/upload")
+@router.post("/upload", response_model=TranscriptResponse)
 async def upload_audio(file: UploadFile = File(...), include_prosody: bool = False):
     # Validação de extensão
     allowed_ext = {"wav", "mp3", "m4a", "ogg"}
