@@ -34,6 +34,37 @@ Treinador de Vendas com IA/
 - Extração de prosódia (librosa) disponível em `POST /prosody/extract` e opcional no upload de transcrição via `include_prosody=true`.
 - Execução local (venv) e suporte a Docker Compose.
 
+## Visão de Produto: Plano Futuro (exemplo e direção)
+
+Esta seção descreve o que este MVP pode se tornar. É um guia direcional, não um compromisso fechado. O objetivo é evoluir para um Treinador de Vendas que:
+
+- Aprende com casos de sucesso (top performers) e extrai padrões de linguagem e prosódia.
+- Gera feedbacks práticos para quem está abaixo da meta, reduzindo o gap de performance.
+
+### Exemplo 10–30–60 (apenas ilustrativo)
+- ~10%: acima da média de conversão com consistência.
+- ~30%: atingem a meta regularmente.
+- ~60%: abaixo da meta — foco do treinador.
+
+O sistema aprende o que funciona com os 10–30% e aplica feedbacks nos 60% para elevar conversão. Este é um exemplo de segmentação, ajustável conforme o contexto.
+
+### Próximas etapas de “análise rica”
+- Diarização (quem falou o quê) para contextualizar trechos.
+- Sentimento/emoção por trecho.
+- Detecção de tópicos/intenções/objeções.
+- Coaching com LLM (agente) para insights e recomendações acionáveis.
+
+### Como integrar sem quebrar o core (Arquitetura Hexagonal)
+- Novas Ports (ex.: `ICoachAgent`, `IEmotionClassifier`, `IDiarization`).
+- Novos Adapters que implementam essas Ports (LLM, Pyannote, HuggingFace etc.).
+- Domínio e casos de uso permanecem estáveis; apenas plugamos os adapters.
+
+### Métricas sugeridas
+- Negócio: lift de conversão dos 60% após feedbacks.
+- Adoção: % de recomendações aplicadas.
+- Qualidade: avaliação humana dos insights.
+- Operacional: latência (`*_ms`) e custo por análise (quando houver LLM).
+
 ## Contribuição
 - Padrões de contribuição e commits: [`docs/contributing.md`](./docs/contributing.md) e [`docs/commit_conventions.md`](./docs/commit_conventions.md)
 
