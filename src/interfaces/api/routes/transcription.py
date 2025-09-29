@@ -2,11 +2,15 @@ import os
 import tempfile
 import time
 from fastapi import APIRouter, UploadFile, File, HTTPException, status, Response
+import uuid
+import logging
 
 from src.application.use_cases.transcrever_audio import TranscreverAudio
 from src.infrastructure.audio.whisper_transcriber import WhisperTranscriber
 from src.infrastructure.audio.librosa_prosody_extractor import LibrosaProsodyExtractor
 from src.interfaces.api.schemas import TranscriptResponse
+from src.infrastructure.db.sqlite import SessionLocal
+from src.infrastructure.db import models as db_models
 
 router = APIRouter()
 
@@ -58,6 +62,10 @@ async def upload_audio(file: UploadFile = File(...), include_prosody: bool = Fal
         dto = use_case.execute(tmp_file)
         t1 = time.perf_counter()
 
+        # Garante interaction_id
+        if not dto.interaction_id:
+            dto.interaction_id = str(uuid.uuid4())
+
         response_data = dto.model_dump()
         response_data["transcription_ms"] = int((t1 - t0) * 1000)
 
@@ -71,6 +79,67 @@ async def upload_audio(file: UploadFile = File(...), include_prosody: bool = Fal
         if response is not None:
             total_ms = int((time.perf_counter() - req_start) * 1000)
             response.headers["X-Process-Time-ms"] = str(total_ms)
+
+        # Logs estruturados mínimos
+        try:
+            logging.getLogger(__name__).info(
+                "transcription_done",
+                extra={
+                    "interaction_id": dto.interaction_id,
+                    "file_size_bytes": len(content),
+                    "include_prosody": include_prosody,
+                    "transcription_ms": response_data.get("transcription_ms"),
+                    "prosody_ms": response_data.get("prosody_ms"),
+                    "total_ms": int((time.perf_counter() - req_start) * 1000),
+                },
+            )
+        except Exception:
+            pass
+
+        # Persistência mínima em SQLite
+        try:
+            session = SessionLocal()
+            # Transcrição
+            seg_dicts = [
+                {"start_s": s.start_s, "end_s": s.end_s, "text": s.text}
+                for s in dto.segments
+            ]
+            tr = db_models.Transcript(
+                interaction_id=dto.interaction_id,
+                language=dto.language,
+                model=dto.model,
+                text=dto.text,
+                segments=seg_dicts,
+            )
+            session.merge(tr)
+
+            # Prosódia opcional
+            if include_prosody and response_data.get("prosody"):
+                pr = response_data["prosody"]
+                pf = db_models.ProsodyFeatures(
+                    interaction_id=dto.interaction_id,
+                    duration_s=pr.get("duration_s"),
+                    rms_mean=pr.get("rms_mean"),
+                    rms_std=pr.get("rms_std"),
+                    zcr_mean=pr.get("zcr_mean"),
+                    zcr_std=pr.get("zcr_std"),
+                    f0_mean=pr.get("f0_mean"),
+                    f0_std=pr.get("f0_std"),
+                )
+                session.merge(pf)
+
+            session.commit()
+        except Exception as db_exc:
+            logging.getLogger(__name__).warning("Falha ao persistir no SQLite: %s", db_exc)
+            try:
+                session.rollback()
+            except Exception:
+                pass
+        finally:
+            try:
+                session.close()
+            except Exception:
+                pass
 
         return response_data
 
